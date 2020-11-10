@@ -39,20 +39,15 @@ const int tempoMedioMotor = 10;
 long erroAssociado;
 
 // Definindo as tarefas
-TaskHandle_t readTemperatureSensorTaskH;
-TaskHandle_t temperatureActuatorTaskH;
-TaskHandle_t readGasSensorTaskH;
+TaskHandle_t readSensorsTaskH;
 TaskHandle_t gasActuatorTaskH;
-TaskHandle_t readFlameSensorTaskH;
+TaskHandle_t temperatureActuatorTaskH;
+
 TaskHandle_t flameActuatorTaskH;
 TaskHandle_t readPIRSensorTaskH;
 TaskHandle_t PIRActuatorTaskH;
 
 // Mutex
-SemaphoreHandle_t temperaturaMutex;
-SemaphoreHandle_t gasMutex;
-SemaphoreHandle_t PIRMutex;
-SemaphoreHandle_t flameMutex;
 SemaphoreHandle_t SerialMutex;
 
 // Queues
@@ -82,70 +77,131 @@ void setup() {
   randomSeed(analogRead(A2)); 
 
   // Mutex
-  temperaturaMutex = xSemaphoreCreateMutex();
-  gasMutex = xSemaphoreCreateMutex();
-  flameMutex = xSemaphoreCreateMutex();
-  PIRMutex = xSemaphoreCreateMutex();
   SerialMutex = xSemaphoreCreateMutex();
 
   // Tarefas
-  xTaskCreate(readTemperatureSensor, "readTemperatureSensor", 128, NULL, 1, &readTemperatureSensorTaskH);
-  xTaskCreate(temperatureActuator, "temperatureActuator", 128, NULL, 1, &temperatureActuatorTaskH);
+  xTaskCreate(readSensors, "readSensors", 128, NULL, 1, &readSensorsTaskH);
+  xTaskCreate(temperatureActuator, "temperatureActuator", 128, NULL, 4, &temperatureActuatorTaskH);
+  xTaskCreate(GasActuator, "gasActuator", 128, NULL, 3, &gasActuatorTaskH);
+  xTaskCreate(FlameActuator, "flameActuator", 128, NULL, 4, &flameActuatorTaskH);
   
-  xTaskCreate(readGasSensor, "readGasSensor", 128, NULL, 2, &readGasSensorTaskH);
-  xTaskCreate(GasActuator, "gasActuator", 128, NULL, 2, &gasActuatorTaskH);
-  
-  xTaskCreate(readFlameSensor, "readFlameSensor", 128, NULL, 3, &readFlameSensorTaskH);
-  xTaskCreate(FlameActuator, "flameActuator", 128, NULL, 3, &flameActuatorTaskH);
-  
+
   //xTaskCreate(readPIRSensor, "readPIRSensor", 128, NULL, 4, &readPIRSensorTaskH);
   //xTaskCreate(PIRActuator, "PIRActuator", 128, NULL, 4, &PIRActuatorTaskH);
   
+  vTaskStartScheduler();
 }
 
-void readTemperatureSensor(){
+void readSensors(){
   temperatureQueue = xQueueCreate( 5, sizeof(float) );
- 
+  flameQueue = xQueueCreate( 5, sizeof(float) );
+  gasQueue = xQueueCreate( 5, sizeof(float) );
+
   while(true){
     temperaturaLida = (float(analogRead(pinoSensorTemperatura))*5/(1023))/0.01;
-    xQueueSend( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(1000));
-    vTaskDelay(pdMS_TO_TICKS(5000));
-  }
-  vTaskDelete(NULL);
-}
-
-void readFlameSensor(){
-
-  flameQueue = xQueueCreate( 5, sizeof(float) );
-  
-  while(true){
     valorDigitalSensorChamas = digitalRead(pinoSensorChamas);
-    xQueueSend( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(1000));
-    vTaskDelay(pdMS_TO_TICKS(5000)); 
-  }
-  
-  vTaskDelete(NULL);
-}
-
-void readGasSensor(){
-  gasQueue = xQueueCreate( 5, sizeof(float) );
-  
-  while(true){
     valorAnalogicoSensorGas = analogRead(pinoSensorGas);
     xQueueSend( gasQueue, (void*)&valorAnalogicoSensorGas, pdMS_TO_TICKS(1000));
-    vTaskDelay(pdMS_TO_TICKS(5000)); 
+    xQueueSend( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(1000));
+    xQueueSend( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(1000));
+    vTaskDelay(pdMS_TO_TICKS(1000));
   }
   vTaskDelete(NULL);
 }
 
+void temperatureActuator(){
+  float temperatura;
+  while(true){
+    unsigned int startTime = millis();
+    if(temperatureQueue != 0){
+        if(xQueueReceive( temperatureQueue, (void*) &temperatura, pdMS_TO_TICKS(1000))){
+            if(temperatura > temperaturaIncendio){ //ATUA 
+            }
+            else{ //nao atua 
+            }
+            if(xSemaphoreTake(SerialMutex, ( TickType_t ) 5) == pdTRUE) {  //Solicita Mutex
+                Serial.print("Temperatura: ");
+                Serial.print(temperatura);
+                Serial.print("\t\t\t");
+                Serial.print("Tempo de inicio: ");
+                Serial.print(startTime);
+                Serial.print("\t");
+                Serial.print("Tempo de fim: ");
+                Serial.println(millis());
+                xSemaphoreGive(SerialMutex);                            //Libera Mutex
+            }
+          } 
+        }
+        vTaskDelay(pdMS_TO_TICKS(1000));
+     }
+  vTaskDelete(NULL); 
+}
+
+void FlameActuator(){
+  int flame;
+  while(true){
+    unsigned int startTime = millis();
+    if(flameQueue != 0){
+        if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(1000))){
+
+            if(flame == FOGO_DETECTADO){ //ATUA 
+            }
+            else{ //nao atua 
+            }
+            if(xSemaphoreTake(SerialMutex, ( TickType_t ) 5) == pdTRUE) {  //Solicita Mutex
+                Serial.print("Flame: ");
+                Serial.print(flame);
+                Serial.print("\t\t\t");
+                Serial.print("Tempo de inicio: ");
+                Serial.print(startTime);
+                Serial.print("\t");
+                Serial.print("Tempo de fim: ");
+                Serial.println(millis());
+                xSemaphoreGive(SerialMutex);                            //Libera Mutex
+            }
+          } 
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
+     }
+  vTaskDelete(NULL);
+}
+
+void GasActuator(){
+  int gas;
+  while(true){
+    unsigned int startTime = millis();
+    if(gasQueue != 0){
+        if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(1000))){
+
+            if(gas > valorVazamento){ //ATUA 
+            }
+            else{ //nao atua 
+            }
+            if(xSemaphoreTake(SerialMutex, ( TickType_t ) 5) == pdTRUE) {  //Solicita Mutex
+                Serial.print("Gas: ");
+                Serial.print(gas);
+                Serial.print("\t\t\t");
+                Serial.print("Tempo de inicio: ");
+                Serial.print(startTime);
+                Serial.print("\t");
+                Serial.print("Tempo de fim: ");
+                Serial.println(millis());
+                xSemaphoreGive(SerialMutex);                            //Libera Mutex
+            }
+          } 
+        }
+        vTaskDelay(pdMS_TO_TICKS(5000));
+     }
+  vTaskDelete(NULL);
+}
+
+
+/*
 void readPIRSensor(){
   while(true){
     unsigned int startTime = millis();
     vTaskDelay(pdMS_TO_TICKS(5000));
-    if(xSemaphoreTake(PIRMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-        presenca = digitalRead(pinoSensorPIR);
-        xSemaphoreGive(PIRMutex);                            //Libera Mutex
-     }
+    presenca = digitalRead(pinoSensorPIR);
      if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
         Serial.print("SensorPIR: ");
         Serial.print(presenca);
@@ -160,7 +216,7 @@ void readPIRSensor(){
   }
   vTaskDelete(NULL); 
 }
-
+*/
 void setBuzzerOn(){
   tone(pinoBuzzer, tomBuzzer);
 }
@@ -183,101 +239,16 @@ bool isPresence(){
 }
 
 
-void temperatureActuator(){
-  float temperatura;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    if(temperatureQueue != 0){
-        if(xQueueReceive( temperatureQueue, (void*) &temperatura, pdMS_TO_TICKS(1000))){
 
-            if(temperatura > temperaturaIncendio){ //ATUA 
-            }
-            else{ //nao atua 
-            }
-            if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-                Serial.print("Temperatura: ");
-                Serial.print(temperatura);
-                Serial.print("\t");
-                Serial.print("Tempo de inicio: ");
-                Serial.print(startTime);
-                Serial.print("\t");
-                Serial.print("Tempo de fim: ");
-                Serial.println(millis());
-                xSemaphoreGive(SerialMutex);                            //Libera Mutex
-            }
-          } 
-        }
-     }
-  vTaskDelete(NULL); 
-}
-
-void FlameActuator(){
-  int flame;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    if(flameQueue != 0){
-        if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(1000))){
-
-            if(flame == FOGO_DETECTADO){ //ATUA 
-            }
-            else{ //nao atua 
-            }
-            if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-                Serial.print("Flame: ");
-                Serial.print(flame);
-                Serial.print("\t");
-                Serial.print("Tempo de inicio: ");
-                Serial.print(startTime);
-                Serial.print("\t");
-                Serial.print("Tempo de fim: ");
-                Serial.println(millis());
-                xSemaphoreGive(SerialMutex);                            //Libera Mutex
-            }
-          } 
-        }
-     }
-  vTaskDelete(NULL);
-}
-
-void GasActuator(){
-  int gas;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    if(gasQueue != 0){
-        if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(1000))){
-
-            if(gas > valorVazamento){ //ATUA 
-            }
-            else{ //nao atua 
-            }
-            if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-                Serial.print("Gas: ");
-                Serial.print(gas);
-                Serial.print("\t");
-                Serial.print("Tempo de inicio: ");
-                Serial.print(startTime);
-                Serial.print("\t");
-                Serial.print("Tempo de fim: ");
-                Serial.println(millis());
-                xSemaphoreGive(SerialMutex);                            //Libera Mutex
-            }
-          } 
-        }
-     }
-  vTaskDelete(NULL);
-}
-
+/*
 void PIRActuator(){
   bool presenceBool;
   while(true){
     unsigned int startTime = millis();
     vTaskDelay(pdMS_TO_TICKS(1000));
-    if(xSemaphoreTake(PIRMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
+    if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
         presenceBool = isPresence();
-        xSemaphoreGive(PIRMutex);                            //Libera Mutex
+        xSemaphoreGive(SerialMutex);                            //Libera Mutex
     }
     if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
         Serial.print("PIR Bool: ");
@@ -300,6 +271,7 @@ void PIRActuator(){
   }
   vTaskDelete(NULL); 
 }
+*/
 void motorActuator(){
   int tempoMotor = getMotorProcessSimulationTime();
   Serial.print("Tempo Motor: ");
@@ -309,21 +281,4 @@ void motorActuator(){
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-
-  //readTemperatureSensor();
-  //readFlameSensor();
-  //readPIRSensor();
-  //readGasSensor();
-  
-  //temperatureActuator();
-  //delay(2000);
-  //FlameActuator();
-  //delay(2000);
-  //PIRActuator();
-  //delay(2000);
-  //GasActuator();
-  //delay(2000);
-  //setBuzzerOff();
-  
 }
