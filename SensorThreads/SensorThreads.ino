@@ -39,9 +39,7 @@ long erroAssociado;
 
 // Definindo as tarefas
 TaskHandle_t readSensorsTaskH;
-TaskHandle_t gasActuatorTaskH;
-TaskHandle_t temperatureActuatorTaskH;
-TaskHandle_t flameActuatorTaskH;
+TaskHandle_t logicControllerTaskH;
 TaskHandle_t readPIRSensorTaskH;
 TaskHandle_t PIRActuatorTaskH;
 TaskHandle_t motorActuatorTaskH;
@@ -91,11 +89,9 @@ void setup() {
   SerialMutex = xSemaphoreCreateMutex();
 
   // Tarefas
-  xTaskCreate(readSensors, "readSensors", 128, NULL, 1, &readSensorsTaskH);
-  xTaskCreate(temperatureActuator, "temperatureActuator", 128, NULL, 2, &temperatureActuatorTaskH);
-  xTaskCreate(GasActuator, "gasActuator", 128, NULL, 3, &gasActuatorTaskH);
-  xTaskCreate(FlameActuator, "flameActuator", 128, NULL, 4, &flameActuatorTaskH);
-  xTaskCreate(readPIRSensor, "readPIRSensor", 128, NULL, 4, &readPIRSensorTaskH);
+  xTaskCreate(readSensors, "readSensors", 128, NULL, 2, &readSensorsTaskH);
+  xTaskCreate(logicController, "logicController", 128, NULL, 1, &logicControllerTaskH);
+  //xTaskCreate(readPIRSensor, "readPIRSensor", 128, NULL, 4, &readPIRSensorTaskH);
   //xTaskCreate(PIRActuator, "PIRActuator", 128, NULL, 4, &PIRActuatorTaskH);
   
   vTaskStartScheduler();
@@ -107,82 +103,41 @@ void readSensors(){
   gasQueue = xQueueCreate( 1, sizeof(float) );
 
   while(true){
+    unsigned int startTime = millis();
     temperaturaLida = (float(analogRead(pinoSensorTemperatura))*5/(1023))/0.01;
     valorDigitalSensorChamas = digitalRead(pinoSensorChamas);
     valorAnalogicoSensorGas = analogRead(pinoSensorGas);
     xQueueSend( gasQueue, (void*)&valorAnalogicoSensorGas, pdMS_TO_TICKS(100));
     xQueueSend( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(100));
     xQueueSend( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(100));
+    sendGantt("SensorTask", startTime, millis());
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
   vTaskDelete(NULL);
 }
 
-void temperatureActuator(){
+void logicController(){
   float temperatura;
+  int flame;
+  int gas;
+
   while(true){
     unsigned int startTime = millis();
     vTaskDelay(pdMS_TO_TICKS(300));
-    if(temperatureQueue != 0){
-        if(xQueueReceive( temperatureQueue, (void*) &temperatura, pdMS_TO_TICKS(100))){
-            if(temperatura > temperaturaIncendio){ //ATUA
-                //Abre Janelas e Portas
-
-
+    if(temperatureQueue != 0){if(xQueueReceive( temperatureQueue, (void*) &temperatura, pdMS_TO_TICKS(100))){/*sendGantt("Temperature", startTime, millis());*/}}
+    if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
+    if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
+       if(flame == FOGO_DETECTADO){ //ATUA 
+                //ABRE JANELAS E Portas 
+                xTaskCreate(motorActuator, "motorActuator", 128, NULL, 3, &motorActuatorTaskH);
             }
-            else{ //nao atua 
-            }
-            sendGantt("TemperatureTask", startTime, millis());
-          } 
-        }
-        vTaskDelay(pdMS_TO_TICKS(3000));
+      //make logic comparisons!
+      sendGantt("LogicTask", startTime, millis());
+      vTaskDelay(pdMS_TO_TICKS(2000));
      }
   vTaskDelete(NULL); 
+
 }
-
-void FlameActuator(){
-  int flame;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(300));
-    if(flameQueue != 0){
-        if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(100))){
-
-            if(flame == FOGO_DETECTADO){ //ATUA 
-                //ABRE JANELAS E Portas 
-                xTaskCreate(motorActuator, "motorActuator", 128, NULL, 2, &motorActuatorTaskH);
-            }
-            else{ //nao atua 
-            }
-            sendGantt("FlameTask", startTime, millis());
-          } 
-        }
-        vTaskDelay(pdMS_TO_TICKS(2000));
-     }
-  vTaskDelete(NULL);
-}
-
-void GasActuator(){
-  int gas;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(300));
-    if(gasQueue != 0){
-        if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(100))){
-
-            if(gas > valorVazamento){ //ATUA 
-            }
-            else{ //nao atua 
-            }
-            sendGantt("GasTask", startTime, millis());
-          } 
-        }
-        vTaskDelay(pdMS_TO_TICKS(5000));
-     }
-  vTaskDelete(NULL);
-}
-
-
 
 void readPIRSensor(){
   while(true){
