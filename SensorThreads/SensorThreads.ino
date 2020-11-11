@@ -32,7 +32,7 @@ int valorDigitalSensorChamas = 1;
 const int ALARME = 1;
 const int pinoSensorPIR = 6;
 const int PRESENCA_DETECTADA = 1;
-int presenca;
+int valorDigitalSensorPIR;
 
 //Pinos/Variáveis para sensor Gás MQ9
 const int pinoSensorGas = A1;
@@ -61,6 +61,7 @@ SemaphoreHandle_t SerialMutex;
 QueueHandle_t temperatureQueue;
 QueueHandle_t gasQueue;
 QueueHandle_t flameQueue;
+QueueHandle_t pirQueue;
 
 void sendGantt(const char *name, unsigned int stime, unsigned int etime) {
     if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
@@ -116,15 +117,18 @@ void readSensors(){
   temperatureQueue = xQueueCreate( 1, sizeof(float) );
   flameQueue = xQueueCreate( 1, sizeof(float) );
   gasQueue = xQueueCreate( 1, sizeof(float) );
+  pirQueue = xQueueCreate( 1, sizeof(float) );
 
   while(true){
     unsigned int startTime = millis();
     temperaturaLida = (float(analogRead(pinoSensorTemperatura))*5/(1023))/0.01;
     valorDigitalSensorChamas = digitalRead(pinoSensorChamas);
     valorAnalogicoSensorGas = analogRead(pinoSensorGas);
+    valorDigitalSensorPIR = digitalRead(pinoSensorPIR);
     xQueueSend( gasQueue, (void*)&valorAnalogicoSensorGas, pdMS_TO_TICKS(100));
     xQueueSend( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(100));
     xQueueSend( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(100));
+    xQueueSend( pirQueue, (void*)&valorDigitalSensorPIR, pdMS_TO_TICKS(100));
     sendGantt("SensorTask", startTime, millis());
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
@@ -135,6 +139,7 @@ void logicController(){
   float temperatureValue;
   int flameValue;
   int gasValue;
+  int pirValue;
 
   while(true){
     unsigned int startTime = millis();
@@ -142,6 +147,9 @@ void logicController(){
     if(temperatureQueue != 0){if(xQueueReceive( temperatureQueue, (void*) &temperatureValue, pdMS_TO_TICKS(100))){/*sendGantt("Temperature", startTime, millis());*/}}
     if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flameValue, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
     if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gasValue, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
+    if(pirQueue != 0){if(xQueueReceive( pirQueue, (void*) &pirValue, pdMS_TO_TICKS(100))){/*sendGantt("PIR", startTime, millis());*/}}
+    /*int state = eTaskGetState(motorActuatorTaskH);
+    sendGantt("Estado " + state, startTime, millis());*/
        if((isFlame(flameValue) || isGas(gasValue) || isTemperatureHigh(temperatureValue)) && valorPinoLed == 0){  
          
                 //ABRE JANELAS E Portas
@@ -151,6 +159,10 @@ void logicController(){
                 digitalWrite(pinoLedAgua, valorPinoLed);
 
             }
+        else if(isPresence(pirValue) && ALARME){
+          //FECHA PORTAS E ACIONA ALARME, PRENDE O LADRAO
+          xTaskCreate(motorActuator, "motorActuator", 128, (void*) FECHA_PORTA, 3, &motorActuatorTaskH);
+        }
       //make logic comparisons!
       sendGantt("LogicTask", startTime, millis());
       vTaskDelay(pdMS_TO_TICKS(2000));
@@ -158,7 +170,7 @@ void logicController(){
   vTaskDelete(NULL); 
 
 }
-
+/*
 void readPIRSensor(){
   while(true){
     unsigned int startTime = millis();
@@ -178,7 +190,7 @@ void readPIRSensor(){
   }
   vTaskDelete(NULL); 
 }
-
+*/
 //Flame detection logic
 bool isFlame(int valorChamas){
   if(valorChamas == FOGO_DETECTADO){ return true; }
@@ -197,6 +209,12 @@ bool isTemperatureHigh(float temperatureValue){
   else{ return false; }
 }
 
+//Presence detection logic
+bool isPresence(int presenca){
+  if(presenca == PRESENCA_DETECTADA){ return true; }
+  else{ return false; }
+}
+
 void setBuzzerOn(){
   tone(pinoBuzzer, tomBuzzer);
 }
@@ -210,12 +228,6 @@ void setBuzzerOff(){
 int getMotorProcessSimulationTime(){
   erroAssociado = random(0,3);
   return tempoMedioMotor + erroAssociado;
-}
-
-
-bool isPresence(){
-  if(presenca == PRESENCA_DETECTADA){ return true; }
-  else{ return false; }
 }
 
 void motorActuator(void *p){
@@ -245,41 +257,6 @@ void motorActuator(void *p){
   vTaskDelete(NULL);
   
 }
-
-/*
-void PIRActuator(){
-  bool presenceBool;
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-        presenceBool = isPresence();
-        xSemaphoreGive(SerialMutex);                            //Libera Mutex
-    }
-    if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-        Serial.print("PIR Bool: ");
-        Serial.print(presenceBool);
-        Serial.print("\t");
-        Serial.print("Tempo de inicio: ");
-        Serial.print(startTime);
-        Serial.print("\t");
-        Serial.print("Tempo de fim: ");
-        Serial.println(millis());
-        xSemaphoreGive(SerialMutex);                            //Libera Mutex
-    }
-    if (presenceBool && ALARME){
-    
-      setBuzzerOn();
-      motorActuator();
-
-    //fechar portas e janelas
-    }
-  }
-  vTaskDelete(NULL); 
-}
-*/
-
-
 
 void loop() {
 }
