@@ -9,6 +9,7 @@
 const int pinoLedPortaAberta = 13;
 const int pinoLedPortaFechada = 12;
 const int pinoLedAgua = 11;
+int valorPinoLed = 0;
 
 //Constantes para abrir e fechar portas
 const int ABRE_PORTA = 1;
@@ -131,19 +132,24 @@ void readSensors(){
 }
 
 void logicController(){
-  float temperatura;
-  int flame;
-  int gas;
+  float temperatureValue;
+  int flameValue;
+  int gasValue;
 
   while(true){
     unsigned int startTime = millis();
     vTaskDelay(pdMS_TO_TICKS(300));
-    if(temperatureQueue != 0){if(xQueueReceive( temperatureQueue, (void*) &temperatura, pdMS_TO_TICKS(100))){/*sendGantt("Temperature", startTime, millis());*/}}
-    if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
-    if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
-       if(flame == FOGO_DETECTADO){ //ATUA 
+    if(temperatureQueue != 0){if(xQueueReceive( temperatureQueue, (void*) &temperatureValue, pdMS_TO_TICKS(100))){/*sendGantt("Temperature", startTime, millis());*/}}
+    if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flameValue, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
+    if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gasValue, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
+       if((isFlame(flameValue) || isGas(gasValue) || isTemperatureHigh(temperatureValue)) && valorPinoLed == 0){  
+         
                 //ABRE JANELAS E Portas
-                xTaskCreate(motorActuator, "motorActuator", 128, (void*) FECHA_PORTA, 3, &motorActuatorTaskH);
+                xTaskCreate(motorActuator, "motorActuator", 128, (void*) ABRE_PORTA, 3, &motorActuatorTaskH);
+                //INDICA ACIONAMENTO DE DIFUSOR DE AGUA DO SENSOR
+                valorPinoLed = 1;
+                digitalWrite(pinoLedAgua, valorPinoLed);
+
             }
       //make logic comparisons!
       sendGantt("LogicTask", startTime, millis());
@@ -173,11 +179,26 @@ void readPIRSensor(){
   vTaskDelete(NULL); 
 }
 
-void setBuzzerOn(int time){
+//Flame detection logic
+bool isFlame(int valorChamas){
+  if(valorChamas == FOGO_DETECTADO){ return true; }
+  else{ return false; }
+}
+
+//Gas detection logic 
+bool isGas(int valorGas){
+  if(valorGas >= valorVazamento){ return true; }
+  else{ return false; }
+}
+
+//High Temperature detection Logic
+bool isTemperatureHigh(float temperatureValue){
+  if(temperaturaLida > temperaturaIncendio){ return true; }
+  else{ return false; }
+}
+
+void setBuzzerOn(){
   tone(pinoBuzzer, tomBuzzer);
-  vTaskDelay(pdMS_TO_TICKS(5000));
-  noTone(pinoBuzzer);
-  digitalWrite(pinoBuzzer, LOW);
 }
 
 void setBuzzerOff(){
@@ -201,6 +222,7 @@ void motorActuator(void *p){
   int modoPorta = (int*) p;
   int tempoMotor = getMotorProcessSimulationTime();
   unsigned int startTime = millis();
+  setBuzzerOn();
 
   if(modoPorta == ABRE_PORTA){
     digitalWrite(pinoLedPortaFechada, LOW);
