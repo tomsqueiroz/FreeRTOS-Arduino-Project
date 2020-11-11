@@ -52,7 +52,7 @@ TaskHandle_t readSensorsTaskH;
 TaskHandle_t logicControllerTaskH;
 TaskHandle_t readPIRSensorTaskH;
 TaskHandle_t PIRActuatorTaskH;
-TaskHandle_t motorActuatorTaskH;
+TaskHandle_t motorActuatorTaskH = NULL;
 
 // Mutex
 SemaphoreHandle_t SerialMutex;
@@ -148,9 +148,7 @@ void logicController(){
     if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flameValue, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
     if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gasValue, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
     if(pirQueue != 0){if(xQueueReceive( pirQueue, (void*) &pirValue, pdMS_TO_TICKS(100))){/*sendGantt("PIR", startTime, millis());*/}}
-    /*int state = eTaskGetState(motorActuatorTaskH);
-    sendGantt("Estado " + state, startTime, millis());*/
-       if((isFlame(flameValue) || isGas(gasValue) || isTemperatureHigh(temperatureValue)) && valorPinoLed == 0){  
+       if((isFlame(flameValue) || isGas(gasValue) || isTemperatureHigh(temperatureValue)) && motorActuatorTaskH == NULL){  
          
                 //ABRE JANELAS E Portas
                 xTaskCreate(motorActuator, "motorActuator", 128, (void*) ABRE_PORTA, 3, &motorActuatorTaskH);
@@ -159,7 +157,7 @@ void logicController(){
                 digitalWrite(pinoLedAgua, valorPinoLed);
 
             }
-        else if(isPresence(pirValue) && ALARME){
+        else if(isPresence(pirValue) && ALARME && motorActuatorTaskH == NULL){
           //FECHA PORTAS E ACIONA ALARME, PRENDE O LADRAO
           xTaskCreate(motorActuator, "motorActuator", 128, (void*) FECHA_PORTA, 3, &motorActuatorTaskH);
         }
@@ -170,6 +168,15 @@ void logicController(){
   vTaskDelete(NULL); 
 
 }
+
+TaskStatus_t getTaskStatus(TaskHandle_t taskHandler){
+  TaskStatus_t xTaskDetails;
+  vTaskGetInfo(taskHandler,  &xTaskDetails, pdTRUE, eInvalid );
+
+  return xTaskDetails;
+}
+
+
 /*
 void readPIRSensor(){
   while(true){
