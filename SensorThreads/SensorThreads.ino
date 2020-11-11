@@ -5,6 +5,11 @@
 #include <math.h>
 
 
+//Pino para LEDS
+const int pinoLedPortaAberta = 13;
+const int pinoLedPortaFechada = 12;
+const int pinoLedAgua = 11;
+
 
 //Pinos/Variáveis para sensor de Temperatura
 const int pinoSensorTemperatura = A0;
@@ -67,6 +72,11 @@ void sendGantt(const char *name, unsigned int stime, unsigned int etime) {
 void setup() {
   Serial.begin(9600);
 
+  //Pino para LEDS
+  pinMode(pinoLedPortaAberta, OUTPUT);
+  pinMode(pinoLedPortaFechada, OUTPUT);
+  pinMode(pinoLedAgua, OUTPUT);
+
   //SetUp Pino Analógico Sensor Temperatura
   pinMode(pinoSensorTemperatura, INPUT);
   
@@ -128,7 +138,7 @@ void logicController(){
     if(flameQueue != 0){if(xQueueReceive( flameQueue, (void*) &flame, pdMS_TO_TICKS(100))){/*sendGantt("Flame", startTime, millis());*/}}
     if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
        if(flame == FOGO_DETECTADO){ //ATUA 
-                //ABRE JANELAS E Portas 
+                //ABRE JANELAS E Portas
                 xTaskCreate(motorActuator, "motorActuator", 128, NULL, 3, &motorActuatorTaskH);
             }
       //make logic comparisons!
@@ -183,8 +193,6 @@ bool isPresence(){
   else{ return false; }
 }
 
-
-
 /*
 void PIRActuator(){
   bool presenceBool;
@@ -220,11 +228,15 @@ void PIRActuator(){
 void motorActuator(){
   int tempoMotor = getMotorProcessSimulationTime();
   unsigned int startTime = millis();
+  digitalWrite(pinoLedPortaFechada, LOW);
+  digitalWrite(pinoLedPortaAberta, LOW);
   vTaskDelay(pdMS_TO_TICKS(tempoMotor*1000));
+  digitalWrite(pinoLedPortaAberta, HIGH);
   sendGantt("MotorTask", startTime, millis());
   vTaskDelete(NULL);
   
 }
+
 
 void loop() {
 }
