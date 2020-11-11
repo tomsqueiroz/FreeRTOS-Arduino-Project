@@ -10,6 +10,10 @@ const int pinoLedPortaAberta = 13;
 const int pinoLedPortaFechada = 12;
 const int pinoLedAgua = 11;
 
+//Constantes para abrir e fechar portas
+const int ABRE_PORTA = 1;
+const int FECHA_PORTA = 2;
+
 
 //Pinos/Variáveis para sensor de Temperatura
 const int pinoSensorTemperatura = A0;
@@ -139,7 +143,7 @@ void logicController(){
     if(gasQueue != 0){if(xQueueReceive( gasQueue, (void*) &gas, pdMS_TO_TICKS(100))){/*sendGantt("Gas", startTime, millis());*/}}
        if(flame == FOGO_DETECTADO){ //ATUA 
                 //ABRE JANELAS E Portas
-                xTaskCreate(motorActuator, "motorActuator", 128, NULL, 3, &motorActuatorTaskH);
+                xTaskCreate(motorActuator, "motorActuator", 128, (void*) FECHA_PORTA, 3, &motorActuatorTaskH);
             }
       //make logic comparisons!
       sendGantt("LogicTask", startTime, millis());
@@ -193,6 +197,33 @@ bool isPresence(){
   else{ return false; }
 }
 
+void motorActuator(void *p){
+  int modoPorta = (int*) p;
+  int tempoMotor = getMotorProcessSimulationTime();
+  unsigned int startTime = millis();
+
+  if(modoPorta == ABRE_PORTA){
+    digitalWrite(pinoLedPortaFechada, LOW);
+    digitalWrite(pinoLedPortaAberta, HIGH);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    digitalWrite(pinoLedPortaAberta, LOW);
+    vTaskDelay(pdMS_TO_TICKS(tempoMotor*1000));
+    digitalWrite(pinoLedPortaAberta, HIGH);
+    sendGantt("MotorTask", startTime, millis());
+  } else if(modoPorta == FECHA_PORTA){
+    digitalWrite(pinoLedPortaAberta, LOW);
+    digitalWrite(pinoLedPortaFechada, HIGH);
+    vTaskDelay(pdMS_TO_TICKS(500));
+    digitalWrite(pinoLedPortaFechada, LOW);
+    vTaskDelay(pdMS_TO_TICKS(tempoMotor*1000));
+    digitalWrite(pinoLedPortaFechada, HIGH);
+    sendGantt("MotorTask", startTime, millis());
+  }
+
+  vTaskDelete(NULL);
+  
+}
+
 /*
 void PIRActuator(){
   bool presenceBool;
@@ -225,17 +256,7 @@ void PIRActuator(){
   vTaskDelete(NULL); 
 }
 */
-void motorActuator(){
-  int tempoMotor = getMotorProcessSimulationTime();
-  unsigned int startTime = millis();
-  digitalWrite(pinoLedPortaFechada, LOW);
-  digitalWrite(pinoLedPortaAberta, LOW);
-  vTaskDelay(pdMS_TO_TICKS(tempoMotor*1000));
-  digitalWrite(pinoLedPortaAberta, HIGH);
-  sendGantt("MotorTask", startTime, millis());
-  vTaskDelete(NULL);
-  
-}
+
 
 
 void loop() {
