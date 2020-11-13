@@ -125,10 +125,10 @@ void readSensors(){
     valorDigitalSensorChamas = digitalRead(pinoSensorChamas);
     valorAnalogicoSensorGas = analogRead(pinoSensorGas);
     valorDigitalSensorPIR = digitalRead(pinoSensorPIR);
-    xQueueSend( gasQueue, (void*)&valorAnalogicoSensorGas, pdMS_TO_TICKS(100));
-    xQueueSend( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(100));
-    xQueueSend( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(100));
-    xQueueSend( pirQueue, (void*)&valorDigitalSensorPIR, pdMS_TO_TICKS(100));
+    xQueueSendToFront( gasQueue, (void*)&valorAnalogicoSensorGas, pdMS_TO_TICKS(100));
+    xQueueSendToFront( flameQueue, (void*)&valorDigitalSensorChamas, pdMS_TO_TICKS(100));
+    xQueueSendToFront( temperatureQueue, (void*)&temperaturaLida, pdMS_TO_TICKS(100));
+    xQueueSendToFront( pirQueue, (void*)&valorDigitalSensorPIR, pdMS_TO_TICKS(100));
     sendGantt("SensorTask", startTime, millis());
     vTaskDelay(pdMS_TO_TICKS(1000));
   }
@@ -166,7 +166,6 @@ void logicController(){
       vTaskDelay(pdMS_TO_TICKS(2000));
      }
   vTaskDelete(NULL); 
-
 }
 
 TaskStatus_t getTaskStatus(TaskHandle_t taskHandler){
@@ -229,7 +228,6 @@ void setBuzzerOn(){
 void setBuzzerOff(){
   noTone(pinoBuzzer);
   digitalWrite(pinoBuzzer, LOW);
-  delay(2000);
 }
 
 int getMotorProcessSimulationTime(){
@@ -260,8 +258,11 @@ void motorActuator(void *p){
     digitalWrite(pinoLedPortaFechada, HIGH);
     sendGantt("MotorTask", startTime, millis());
   }
-
+  setBuzzerOff();
+  digitalWrite(pinoLedAgua, LOW);
+  motorActuatorTaskH = NULL;
   vTaskDelete(NULL);
+  
   
 }
 
