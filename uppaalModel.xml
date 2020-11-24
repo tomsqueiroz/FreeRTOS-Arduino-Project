@@ -1,0 +1,359 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE nta PUBLIC '-//Uppaal Team//DTD Flat System 1.1//EN' 'http://www.it.uu.se/research/group/darts/uppaal/flat-1_2.dtd'>
+<nta>
+	<declaration>// Place global declarations here.
+
+
+// controlador de temperatura
+const int NumeroEntradasTemperatura = 15;
+const int TEMPERATURA_MAXIMA = 50;
+const int ALARME = 1; //define o estado do alarme ativo ou inativo
+
+chan temperaturaAcima;
+
+int vetorTemperaturas[NumeroEntradasTemperatura] = {30, 32, 31, 33, 32, 30, 33, 32, 33, 37, 39, 41, 45, 51, 52};
+
+
+//controlador de fumaca
+const int NumeroEntradasFumaca = 15;
+const int CO_MAXIMO = 100;
+
+chan fumacaAcima;
+
+int vetorNiveisFumaca[NumeroEntradasFumaca] = {5, 7, 8, 10, 7, 10, 11, 120, 123, 115, 45, 37, 20, 8, 7};
+
+//controlador do alarme
+const int NumeroEntradasAlarme = 15;
+
+
+int vetorPresenca[NumeroEntradasAlarme] = {0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+int vetorSensorPortas[NumeroEntradasAlarme] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+
+chan alarme;</declaration>
+	<template>
+		<name>AcionaPolicia</name>
+		<declaration>clock x;</declaration>
+		<location id="id0" x="-1334" y="-391">
+			<name x="-1368" y="-366">Inicio</name>
+		</location>
+		<location id="id1" x="-1070" y="-391">
+			<name x="-1105" y="-366">AcionaPolicia</name>
+		</location>
+		<init ref="id0"/>
+		<transition>
+			<source ref="id1"/>
+			<target ref="id0"/>
+			<label kind="guard" x="-1232" y="-527">x &gt;= 5000</label>
+			<nail x="-1071" y="-501"/>
+			<nail x="-1343" y="-501"/>
+		</transition>
+		<transition>
+			<source ref="id0"/>
+			<target ref="id1"/>
+			<label kind="synchronisation" x="-1240" y="-417">alarme?</label>
+			<label kind="assignment" x="-1232" y="-382">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>AcionaBombeiros</name>
+		<declaration>clock x;</declaration>
+		<location id="id2" x="-2091" y="-646">
+			<name x="-2108" y="-612">Inicio</name>
+		</location>
+		<location id="id3" x="-1827" y="-646">
+			<name x="-1895" y="-612">AcionaBombeiros</name>
+		</location>
+		<init ref="id2"/>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-2014" y="-561">fumacaAcima?</label>
+			<nail x="-2091" y="-544"/>
+			<nail x="-1827" y="-544"/>
+		</transition>
+		<transition>
+			<source ref="id3"/>
+			<target ref="id2"/>
+			<label kind="guard" x="-1997" y="-782">x &gt;= 5000</label>
+			<nail x="-1827" y="-756"/>
+			<nail x="-2099" y="-756"/>
+		</transition>
+		<transition>
+			<source ref="id2"/>
+			<target ref="id3"/>
+			<label kind="synchronisation" x="-2014" y="-680">temperaturaAcima?</label>
+			<label kind="assignment" x="-1980" y="-638">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>AcionadorBuzzer</name>
+		<declaration>clock x;</declaration>
+		<location id="id4" x="-1368" y="-221">
+			<name x="-1436" y="-196">Listening</name>
+		</location>
+		<location id="id5" x="-1156" y="-221">
+			<name x="-1166" y="-255">Buzzing</name>
+		</location>
+		<init ref="id4"/>
+		<transition>
+			<source ref="id5"/>
+			<target ref="id4"/>
+			<label kind="guard" x="-1359" y="-391">x &gt;= 10000</label>
+			<label kind="assignment" x="-1334" y="-374">x:=0</label>
+			<nail x="-1156" y="-357"/>
+			<nail x="-1377" y="-357"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-1350" y="-154">temperaturaAcima?</label>
+			<label kind="assignment" x="-1300" y="-137">x:=0</label>
+			<nail x="-1368" y="-137"/>
+			<nail x="-1147" y="-137"/>
+		</transition>
+		<transition>
+			<source ref="id4"/>
+			<target ref="id5"/>
+			<label kind="synchronisation" x="-1334" y="-238">fumacaAcima?</label>
+			<label kind="assignment" x="-1300" y="-221">x:=0</label>
+		</transition>
+	</template>
+	<template>
+		<name>AtuadorPortas</name>
+		<declaration>clock x;</declaration>
+		<location id="id6" x="-935" y="-170">
+			<name x="-1003" y="-195">Inicio</name>
+		</location>
+		<location id="id7" x="-799" y="-305">
+			<name x="-809" y="-339">Abrindo</name>
+		</location>
+		<location id="id8" x="-799" y="-59">
+			<name x="-859" y="-34">Fechando</name>
+		</location>
+		<init ref="id6"/>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-782" y="-212">temperaturaAcima?</label>
+			<nail x="-791" y="-187"/>
+		</transition>
+		<transition>
+			<source ref="id8"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-1071" y="-102">x &gt;= 3000</label>
+			<label kind="assignment" x="-969" y="-51">x:=0</label>
+			<nail x="-977" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id7"/>
+			<target ref="id6"/>
+			<label kind="guard" x="-951" y="-343">x &gt;= 3000</label>
+			<label kind="assignment" x="-1012" y="-306">x:=0</label>
+			<nail x="-969" y="-314"/>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id8"/>
+			<label kind="synchronisation" x="-867" y="-136">alarme?</label>
+		</transition>
+		<transition>
+			<source ref="id6"/>
+			<target ref="id7"/>
+			<label kind="synchronisation" x="-935" y="-280">fumacaAcima?</label>
+		</transition>
+	</template>
+	<template>
+		<name>AtuadorJanelas</name>
+		<declaration>clock x;</declaration>
+		<location id="id9" x="-1164" y="-450">
+			<name x="-1232" y="-475">Inicio</name>
+		</location>
+		<location id="id10" x="-1028" y="-585">
+			<name x="-1038" y="-619">Abrindo</name>
+		</location>
+		<location id="id11" x="-1028" y="-339">
+			<name x="-1088" y="-314">Fechando</name>
+		</location>
+		<init ref="id9"/>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-1011" y="-492">temperaturaAcima?</label>
+			<nail x="-1020" y="-467"/>
+		</transition>
+		<transition>
+			<source ref="id11"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-1300" y="-382">x &gt;= 3000</label>
+			<label kind="assignment" x="-1198" y="-331">x:=0</label>
+			<nail x="-1206" y="-339"/>
+		</transition>
+		<transition>
+			<source ref="id10"/>
+			<target ref="id9"/>
+			<label kind="guard" x="-1180" y="-623">x &gt;= 3000</label>
+			<label kind="assignment" x="-1241" y="-586">x:=0</label>
+			<nail x="-1198" y="-594"/>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id11"/>
+			<label kind="synchronisation" x="-1096" y="-416">alarme?</label>
+		</transition>
+		<transition>
+			<source ref="id9"/>
+			<target ref="id10"/>
+			<label kind="synchronisation" x="-1164" y="-560">fumacaAcima?</label>
+		</transition>
+	</template>
+	<template>
+		<name x="5" y="5">ControladorTemp</name>
+		<declaration>// Place local declarations here.
+
+clock x;
+
+int indexTemperatura = 0;
+
+
+
+void resetIndexTemperatura(){
+
+    if(indexTemperatura &gt;= NumeroEntradasTemperatura){
+        indexTemperatura = 0;
+    }
+
+}</declaration>
+		<location id="id12" x="-450" y="-17">
+			<name x="-535" y="0">LeituraTemperatura</name>
+		</location>
+		<location id="id13" x="-773" y="-255">
+		</location>
+		<init ref="id12"/>
+		<transition>
+			<source ref="id13"/>
+			<target ref="id12"/>
+			<label kind="assignment" x="-773" y="-17">x:=0,
+resetIndexTemperatura()</label>
+			<nail x="-773" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-943" y="-161">vetorTemperaturas[indexTemperatura]&lt;=TEMPERATURA_MAXIMA  &amp;&amp;  x &gt;= 30</label>
+			<label kind="assignment" x="-755" y="-136">indexTemperatura++</label>
+		</transition>
+		<transition>
+			<source ref="id12"/>
+			<target ref="id13"/>
+			<label kind="guard" x="-731" y="-289">vetorTemperaturas[indexTemperatura]&gt;=TEMPERATURA_MAXIMA &amp;&amp; x&gt;=30</label>
+			<label kind="synchronisation" x="-654" y="-272">temperaturaAcima!</label>
+			<label kind="assignment" x="-654" y="-246">indexTemperatura++</label>
+			<nail x="-450" y="-255"/>
+		</transition>
+	</template>
+	<template>
+		<name>ControladorFumaca</name>
+		<declaration>// Place local declarations here.
+
+clock x;
+
+int indexFumaca = 0;
+
+
+
+void resetIndexFumaca(){
+
+    if(indexFumaca &gt;= NumeroEntradasFumaca){
+        indexFumaca = 0;
+    }
+
+}</declaration>
+		<location id="id14" x="-697" y="-297">
+		</location>
+		<location id="id15" x="-374" y="-59">
+			<name x="-459" y="-42">LeituraFumaca</name>
+		</location>
+		<init ref="id15"/>
+		<transition>
+			<source ref="id14"/>
+			<target ref="id15"/>
+			<label kind="assignment" x="-697" y="-59">x:=0,
+resetIndexFumaca()</label>
+			<nail x="-697" y="-59"/>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-867" y="-203">vetorNiveisFumaca[indexFumaca]&lt;=CO_MAXIMO  &amp;&amp;  x &gt;= 1200</label>
+			<label kind="assignment" x="-679" y="-178">indexFumaca++</label>
+		</transition>
+		<transition>
+			<source ref="id15"/>
+			<target ref="id14"/>
+			<label kind="guard" x="-655" y="-331">vetorNiveisFumaca[indexFumaca]&gt;=CO_MAXIMO &amp;&amp; x&gt;=1200</label>
+			<label kind="synchronisation" x="-578" y="-314">fumacaAcima!</label>
+			<label kind="assignment" x="-578" y="-288">indexFumaca++</label>
+			<nail x="-374" y="-297"/>
+		</transition>
+	</template>
+	<template>
+		<name>ControladorAlarme</name>
+		<declaration>int indexAlarme = 0;
+
+
+
+void resetIndexAlarme(){
+
+    if(indexAlarme &gt;= NumeroEntradasAlarme){
+        indexAlarme = 0;
+    }
+
+}</declaration>
+		<location id="id16" x="-102" y="-17">
+			<name x="-127" y="0">Listening</name>
+		</location>
+		<location id="id17" x="-374" y="-195">
+		</location>
+		<init ref="id16"/>
+		<transition>
+			<source ref="id17"/>
+			<target ref="id16"/>
+			<label kind="assignment" x="-356" y="-17">resetIndexAlarme()</label>
+			<nail x="-374" y="-17"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-348" y="-255">(vetorSensorPortas[indexAlarme]==1 || vetorPresenca[indexAlarme]==1) &amp;&amp; ALARME == 1</label>
+			<label kind="synchronisation" x="-110" y="-238">alarme!</label>
+			<label kind="assignment" x="-127" y="-221">indexAlarme++</label>
+			<nail x="-102" y="-195"/>
+		</transition>
+		<transition>
+			<source ref="id16"/>
+			<target ref="id17"/>
+			<label kind="guard" x="-544" y="-127">!((vetorSensorPortas[indexAlarme]==1 || vetorPresenca[indexAlarme]==1) &amp;&amp; ALARME == 1)</label>
+			<label kind="assignment" x="-356" y="-106">indexAlarme++</label>
+		</transition>
+	</template>
+	<system>// Place template instantiations here.
+ControladorTemperatura = ControladorTemp();
+ControladorFum = ControladorFumaca();
+ControladorAlarm = ControladorAlarme();
+AtuadorWindows = AtuadorJanelas();
+AtuadorDoors = AtuadorPortas();
+AcionadrBuzzer = AcionadorBuzzer();
+AcionadorPolicia = AcionaPolicia();
+AcionadorBombeiros = AcionaBombeiros();
+
+// List one or more processes to be composed into a system.
+system ControladorTemp, ControladorFum, ControladorAlarm, AtuadorWindows, AtuadorDoors, AcionadrBuzzer, AcionadorPolicia, AcionadorBombeiros;
+
+    </system>
+	<queries>
+		<query>
+			<formula></formula>
+			<comment></comment>
+		</query>
+	</queries>
+</nta>

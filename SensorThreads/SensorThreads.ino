@@ -29,7 +29,7 @@ int valorDigitalSensorChamas = 1;
 
 
 //Pinos/Variáveis para sensor PIR
-const int ALARME = 1;
+int ALARME = 1;
 const int pinoSensorPIR = 6;
 const int PRESENCA_DETECTADA = 1;
 int valorDigitalSensorPIR;
@@ -107,8 +107,7 @@ void setup() {
   // Tarefas
   xTaskCreate(readSensors, "readSensors", 128, NULL, 2, &readSensorsTaskH);
   xTaskCreate(logicController, "logicController", 128, NULL, 1, &logicControllerTaskH);
-  //xTaskCreate(readPIRSensor, "readPIRSensor", 128, NULL, 4, &readPIRSensorTaskH);
-  //xTaskCreate(PIRActuator, "PIRActuator", 128, NULL, 4, &PIRActuatorTaskH);
+
   
   vTaskStartScheduler();
 }
@@ -175,28 +174,6 @@ TaskStatus_t getTaskStatus(TaskHandle_t taskHandler){
   return xTaskDetails;
 }
 
-
-/*
-void readPIRSensor(){
-  while(true){
-    unsigned int startTime = millis();
-    vTaskDelay(pdMS_TO_TICKS(5000));
-    presenca = digitalRead(pinoSensorPIR);
-     if(xSemaphoreTake(SerialMutex, portMAX_DELAY) == pdTRUE) {  //Solicita Mutex
-        Serial.print("SensorPIR: ");
-        Serial.print(presenca);
-        Serial.print("\t");
-        Serial.print("Tempo de inicio: ");
-        Serial.print(startTime);
-        Serial.print("\t");
-        Serial.print("Tempo de fim: ");
-        Serial.println(millis());
-        xSemaphoreGive(SerialMutex);                            //Libera Mutex
-    } 
-  }
-  vTaskDelete(NULL); 
-}
-*/
 //Flame detection logic
 bool isFlame(int valorChamas){
   if(valorChamas == FOGO_DETECTADO){ return true; }
@@ -262,7 +239,6 @@ void motorActuator(void *p){
   digitalWrite(pinoLedAgua, LOW);
   motorActuatorTaskH = NULL;
   vTaskDelete(NULL);
-  
   
 }
 
